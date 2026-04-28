@@ -8,6 +8,14 @@ function setup() {
     document.addEventListener('mouseup', onMouseUp);
     angleMode(DEGREES);
     noStroke();
+
+    // Initialize webcam
+    video = createCapture(VIDEO);
+    video.size(640, 480);
+    video.hide(); // Hide the raw feed
+
+    // Initialize BodyPose
+    bodyPose = ml5.bodyPose(video, modelReady);
 }
 
 function draw() {
@@ -38,6 +46,13 @@ function draw() {
 
     drawGrid();
     drawAxes();
+
+    // new change
+    for (let person of peopleArray) {
+    // Pass the vision data into your update function
+    person.update(userMovement);
+    person.display();
+    }
 }
 
 function initPeople() {
@@ -76,4 +91,22 @@ function drawAxes() {
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
+}
+
+// new function
+function modelReady() {
+  bodyPose.detectStart(video, gotPoses);
+}
+
+// new function
+function gotPoses(results) {
+  poses = results;
+  if (poses.length > 0) {
+    // Track the nose as the primary interaction point
+    let nose = poses[0].nose;
+    // Map webcam coordinates (0 to 640) to WebGL coordinates (-width/2 to width/2)
+    userMovement.x = map(nose.x, 0, 640, width/2, -width/2); // Mirrored for natural feel
+    userMovement.y = map(nose.y, 0, 480, -height/2, height/2);
+    userMovement.active = true;
+  }
 }
