@@ -42,6 +42,12 @@ let modelsReady = false;         // new: both models loaded
 // Body model bounds
 let modelMinX, modelMaxX, modelMinY, modelMaxY, modelMinZ, modelMaxZ;
 
+// store the vision data
+let video;
+let bodyPose;
+let poses = [];
+let userMovement = { x: 0, y: 0, active: false };
+
 // ========== Mouse Camera Control ==========
 function onMouseDown(e) {
     if (e.button === 0) {
