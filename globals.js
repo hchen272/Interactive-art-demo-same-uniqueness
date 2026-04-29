@@ -21,7 +21,7 @@ let armSwingSpeed = 2.2;
 let legSwingSpeed = 2.2;
 
 // Camera control
-let camRotationX = 0;
+let camRotationX = 20;
 let camRotationY = 0;
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -37,34 +37,31 @@ let groundY = 20;                // raised overall
 // Model loading flags
 let bodyLoaded = false;
 let armLoaded = false;
-let modelsReady = false;         // new: both models loaded
+let modelsReady = false;         // both models loaded
 
 // Body model bounds
 let modelMinX, modelMaxX, modelMinY, modelMaxY, modelMinZ, modelMaxZ;
 
-// store the vision data
+let buildings = [];
+
+// ======== CITY GENERATION PARAMETERS (your original values) ========
+const GRID_SIZE_X = 8;
+const GRID_SIZE_Z = 48;
+const BUILDING_SPACING = 21;
+const LEFT_REGION_X = -360;
+const RIGHT_REGION_X = 210;
+const REGION_Z_START = -500;
+
+const MIN_BUILDING_W = 6;
+const MAX_BUILDING_W = 14;
+const MIN_BUILDING_H = 80;
+const MAX_BUILDING_H = 170;
+const MIN_BUILDING_D = 10;
+const MAX_BUILDING_D = 18;
+
 let video;
 let bodyPose;
 let poses = [];
-let userMovement = { x: 0, y: 0, active: false };
-
-// ========== Mouse Camera Control ==========
-function onMouseDown(e) {
-    if (e.button === 0) {
-        isDragging = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-    }
-}
-function onMouseUp(e) { isDragging = false; }
-function onMouseMove(e) {
-    if (isDragging) {
-        let dx = e.clientX - lastMouseX;
-        let dy = e.clientY - lastMouseY;
-        camRotationY += dx * 0.01;
-        camRotationX += dy * 0.01;
-        camRotationX = constrain(camRotationX, -PI/2, PI/2);
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-    }
-}
+let controlledPersonIndex = -1;
+let ml5Ready = false;
+let aiControlActive = false;      // 新增

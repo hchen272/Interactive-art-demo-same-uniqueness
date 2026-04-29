@@ -2,16 +2,160 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8" />
-    <title>same uniqueness</title>
+    <title>same uniqueness - Cyberpunk Crowd</title>
     <script src="lib/p5.min.js"></script>
-    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css" />
+    <style>
+        /* 全局基础样式 */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+        }
+        
+        /* 自定义面板样式（完整版） */
+        .char-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 16px 20px;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            color: #0ff;
+            font-family: 'Courier New', monospace;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            font-size: 14px;
+            pointer-events: auto;
+        }
+        .char-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .char-panel label {
+            display: inline-block;
+            width: 80px;
+            margin-right: 8px;
+        }
+        .char-panel input, .char-panel select {
+            background: #1a1a2e;
+            color: #0ff;
+            border: 1px solid #0ff;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+        .char-panel button {
+            background: #1a1a2e;
+            color: #0ff;
+            border: 1px solid #0ff;
+            border-radius: 6px;
+            padding: 6px 12px;
+            margin: 5px 4px 0 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: bold;
+        }
+        .char-panel button:hover {
+            background: #0ff;
+            color: #0a0a1a;
+            box-shadow: 0 0 8px #0ff;
+        }
+        .char-panel .row {
+            margin-bottom: 12px;
+        }
+
+        .controlled-highlight {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,255,255,0.7);
+            color: black;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            z-index: 200;
+            pointer-events: none;
+        }
+        
+        /* 预览画布容器样式 */
+        #previewContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 320px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            pointer-events: none;   /* 让鼠标穿透容器，但画布内部可交互 */
+        }
+        #previewContainer canvas {
+            width: 100% !important;
+            height: 100% !important;
+            pointer-events: auto;   /* 画布本身可拖拽旋转 */
+        }
+    </style>
 </head>
 <body>
     <main></main>
+    
+    <!-- Custom character panel -->
+    <div id="charControls" class="char-panel">
+        <h3>⚡ CUSTOMIZE ⚡</h3>
+        <div class="row">
+            <label>👤 Body Color:</label>
+            <input type="color" id="bodyColorPicker" value="#5588ff">
+        </div>
+        <div class="row">
+            <label>💠 Neon Trim:</label>
+            <select id="neonTypeSelect">
+                <option value="cyan">Cyan</option>
+                <option value="purple">Purple</option>
+                <option value="blue">Electric Blue</option>
+            </select>
+        </div>
+        <div class="row">
+            <label>⚡ Speed:</label>
+            <input type="range" id="speedSlider" min="0.5" max="2.5" step="0.05" value="1.2">
+        </div>
+        <div class="row">
+            <button id="applyToRandomBtn">🎲 Apply to Random</button>
+            <button id="applyToAllBtn">🌐 Apply to All</button>
+        </div>
+        <div class="row" style="font-size: 12px; margin-top: 8px; text-align: center;">
+            <span>✨ click to customize any pedestrian ✨</span>
+        </div>
+        <div class="row">
+            <button id="assignAIBtn">🎯 Enable AI Control</button>
+        </div>
+    </div>
+    
+    <!-- Preview canvas container -->
+    <div id="previewContainer"></div>
+    <div id="aiControlHint" class="controlled-highlight" style="display: none;">🤖 AI Controlling Random Pedestrian</div>
+
+    <!-- Scripts (order matters) -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0"></script>
+    <script src="https://unpkg.com/ml5@1.3.0/dist/ml5.js"></script>
     <script src="globals.js"></script>
     <script src="modelLoader.js"></script>
     <script src="People3D.js"></script>
+    <script src="buildings.js"></script>
+    <script src="videoDebug.js"></script>
     <script src="sketch.js"></script>
+    <script src="preview.js"></script>
 </body>
 </html>

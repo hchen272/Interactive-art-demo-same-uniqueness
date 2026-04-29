@@ -18,7 +18,7 @@ function preload() {
         (err) => console.error('body load error', err)
     );
 
-    // Limb model (change filename if needed, e.g. armandleg.obj)
+    // Limb model
     armlegmodel = loadModel('model/armandleg.obj', false,
         () => {
             console.log('arm/leg model loaded');

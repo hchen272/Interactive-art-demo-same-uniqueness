@@ -1,43 +1,55 @@
 function setup() {
     createCanvas(windowWidth, windowHeight, WEBGL);
     smooth();
-    // Adjust camera position: zoom out and raise to better see the ground
-    camera(0, -400, 800, 0, 0, 0, 0, 1, 0);
+    camera(0, -400, 350, 0, 0, 0, 0, 1, 0);
+    
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('mouseup', onMouseUp);
+    
     angleMode(DEGREES);
     noStroke();
+    
+    generateBuildings();
+    setupUI();
 
-    // Initialize webcam
-    video = createCapture(VIDEO);
-    video.size(640, 480);
-    video.hide(); // Hide the raw feed
-
-    // Initialize BodyPose
-    bodyPose = ml5.bodyPose(video, modelReady);
+    setTimeout(() => {
+        setupCameraAndML5();
+    }, 500);
 }
 
 function draw() {
     background(30);
-    ambientLight(80, 80, 100);
-    directionalLight(200, 180, 150, 0.5, 1, -0.5);
-    rotateX(camRotationX);
-    rotateY(camRotationY);
-
-    // Wait for models to load before initializing crowd
+    
+    ambientLight(100, 100, 60);
+    directionalLight(120, 100, 180, 0.5, 1, -0.5);
+    pointLight(80, 60, 160, 0, 100, 0);
+    
+    rotateX(20);
+    //rotateY(camRotationY);
+    
+    drawGroundGrid();
+    //drawAxes();
+    drawBuildings();
+    
     if (modelsReady && people.length === 0) {
         initPeople();
-        console.log('👥 Crowd initialized, total:', people.length, 'people');
+        previewPerson = new People3D(-250, 450, color(150,150,150), 'cyan', 1.2);
+        console.log('👥 Crowd initialized with default gray color');
     }
 
-    // Update and draw people
+    if (aiControlActive && ml5Ready && poses.length > 0 && previewPerson) {
+        let keypoints = poses[0].keypoints;
+        previewPerson.updateFromPose(keypoints);
+    } else if (previewPerson && !aiControlActive) {
+        previewPerson.leftArmML5Angle = undefined;
+        previewPerson.rightArmML5Angle = undefined;
+        previewPerson.leftLegML5Angle = undefined;
+        previewPerson.rightLegML5Angle = undefined;
+    }
+    
     for (let p of people) {
         p.update();
-        if (userMovement.active) {
-            p.interact(userMovement.x, userMovement.z ?? 0);
-        }
-    p.show();
     }
     for (let iter = 0; iter < 2; iter++) {
         for (let p of people) {
@@ -47,63 +59,157 @@ function draw() {
     for (let p of people) {
         p.show();
     }
-
-    drawGrid();
-    drawAxes();
 }
 
-function initPeople() {
-    for (let i = 0; i < peopleCount; i++) {
-        let x = random(-worldWidth / 2, worldWidth / 2);
-        let z = random(-worldDepth / 2, worldDepth / 2);
-        let col = color(150, 150, 150);
-        people.push(new People3D(x, z, col));
+// ----------------------------------------------
+//  UI 面板逻辑（实时同步预览人物）
+// ----------------------------------------------
+function setupUI() {
+    const colorPicker = select('#bodyColorPicker');
+    const neonSelect = select('#neonTypeSelect');
+    const speedSlider = select('#speedSlider');
+    const randomBtn = select('#applyToRandomBtn');
+    const allBtn = select('#applyToAllBtn');
+    
+    // 实时更新预览人物
+    colorPicker.input(() => {
+        if (previewPerson) previewPerson.bodyColor = color(colorPicker.value());
+    });
+    neonSelect.input(() => {
+        if (previewPerson) previewPerson.neonType = neonSelect.value();
+    });
+    speedSlider.input(() => {
+        if (previewPerson) {
+            let newSpeed = parseFloat(speedSlider.value());
+            previewPerson.speed = newSpeed;
+            previewPerson.dz = 0.2 * newSpeed;
+        }
+    });
+    
+    randomBtn.mousePressed(() => {
+        if (people.length === 0) return;
+        const target = random(people);
+        const newColor = color(colorPicker.value());
+        const newNeon = neonSelect.value();
+        const newSpeed = parseFloat(speedSlider.value());
+        target.updateStyle(newColor, newNeon, newSpeed);
+        console.log(`✨ Customized a random person (new speed: ${newSpeed})`);
+    });
+    
+    allBtn.mousePressed(() => {
+        if (people.length === 0) return;
+        const newColor = color(colorPicker.value());
+        const newNeon = neonSelect.value();
+        const newSpeed = parseFloat(speedSlider.value());
+        for (let p of people) {
+            p.updateStyle(newColor, newNeon, newSpeed);
+        }
+        console.log(`🌐 All people updated! Speed: ${newSpeed}`);
+    });
+
+    const assignAIBtn = select('#assignAIBtn');
+    if (assignAIBtn) {
+        assignAIBtn.mousePressed(() => {
+            aiControlActive = !aiControlActive;
+            assignAIBtn.html(aiControlActive ? '🔴 Stop AI Control' : '🎯 Enable AI Control');
+        });
     }
 }
 
-// Helper: draw grid
-function drawGrid() {
+// Helper functions (unchanged)
+function drawGroundGrid() {
     push();
-    stroke(100);
+    stroke(70, 90, 150);
     strokeWeight(0.5);
     noFill();
-    let size = 400;
-    let step = 40;
-    for (let x = -size; x <= size; x += step) {
-        line(x, 0, -size, x, 0, size);
-        line(-size, 0, x, size, 0, x);
+    const gridSize = 500;
+    const gridStep = 40;
+    for (let x = -gridSize; x <= gridSize; x += gridStep) {
+        line(x, groundY, -gridSize, x, groundY, gridSize);
+    }
+    for (let z = -gridSize; z <= gridSize; z += gridStep) {
+        line(-gridSize, groundY, z, gridSize, groundY, z);
     }
     pop();
 }
 
-// Helper: draw axes
 function drawAxes() {
     push();
     strokeWeight(2);
-    stroke(255, 0, 0); line(-200, 0, 0, 200, 0, 0);
-    stroke(0, 255, 0); line(0, -200, 0, 0, 200, 0);
-    stroke(0, 0, 255); line(0, 0, -200, 0, 0, 200);
+    stroke(255, 0, 0);
+    line(-200, 20, 0, 200, 20, 0);
+    stroke(0, 255, 0);
+    line(0, -200, 0, 0, 200, 0);
+    stroke(0, 0, 255);
+    line(0, 20, -200, 0, 20, 200);
     pop();
+}
+
+function initPeople() {
+    const defaultColor = color(150, 150, 150);
+    const defaultNeon = 'cyan';
+    for (let i = 0; i < peopleCount; i++) {
+        let x = random(-worldWidth / 2 + 5, worldWidth / 2 - 5);
+        let z = random(-worldDepth / 2 + 5, worldDepth / 2 - 5);
+        let speedVal = random(0.8, 2.2);
+        people.push(new People3D(x, z, defaultColor, defaultNeon, speedVal));
+    }
 }
 
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
 
-// new function
-function modelReady() {
-  bodyPose.detectStart(video, gotPoses);
+function onMouseMove(e) {
+    if (isDragging) {
+        camRotationY += (e.clientX - lastMouseX) * 0.5;
+        camRotationX = constrain(camRotationX - (e.clientY - lastMouseY) * 0.5, 0, 90);
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    }
 }
 
-// new function
+function onMouseDown(e) {
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+}
+
+function onMouseUp(e) {
+    isDragging = false;
+}
+
+async function setupCameraAndML5() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video = createCapture(VIDEO);
+        video.size(320, 240);
+        
+        setTimeout(() => {
+            if (typeof setupVideoDebug === 'function') {
+                setupVideoDebug();
+            }
+        }, 1000);
+        
+        bodyPose = ml5.bodyPose('MoveNet', { model: 'movenet_singlepose_lightning' }, () => {
+            console.log('✅ BodyPose model loaded');
+            ml5Ready = true;
+            detectPose();
+        });
+    } catch (err) {
+        console.error('Camera error:', err);
+    }
+}
+
+function detectPose() {
+    if (!ml5Ready || !video) return;
+    bodyPose.detect(video, gotPoses);
+}
+
 function gotPoses(results) {
-  poses = results;
-  if (poses.length > 0) {
-    // Track the nose as the primary interaction point
-    let nose = poses[0].nose;
-    // Map webcam coordinates (0 to 640) to WebGL coordinates (-width/2 to width/2)
-    userMovement.x = map(nose.x, 0, 640, width/2, -width/2); // Mirrored for natural feel
-    userMovement.y = map(nose.y, 0, 480, -height/2, height/2);
-    userMovement.active = true;
-  }
+    poses = results;
+    if (typeof updateDebugPoses === 'function') {
+        updateDebugPoses(poses);
+    }
+    detectPose();
 }
