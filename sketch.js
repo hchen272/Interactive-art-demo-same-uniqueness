@@ -34,6 +34,10 @@ function draw() {
     // Update and draw people
     for (let p of people) {
         p.update();
+        if (userMovement.active) {
+            p.interact(userMovement.x, userMovement.z ?? 0);
+        }
+    p.show();
     }
     for (let iter = 0; iter < 2; iter++) {
         for (let p of people) {
@@ -46,13 +50,6 @@ function draw() {
 
     drawGrid();
     drawAxes();
-
-    // new change
-    for (let person of peopleArray) {
-    // Pass the vision data into your update function
-    person.update(userMovement);
-    person.display();
-    }
 }
 
 function initPeople() {
