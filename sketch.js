@@ -1,122 +1,117 @@
+// ========== Main Window Logic ==========
+// With statistics, auto-reset, and "specialized only once" rule.
+// Statistics displayed via HTML div, no buttons.
+
+let totalSpecialApplied = 0;       // Total number of times a random person was specialized
+let specializedFlags = [];         // Boolean array: true if person has been specialized at least once
+let resetCount = 0;                // Number of resets (auto + manual)
+
+// Default appearance values
+const DEFAULT_COLOR_RGB = [150, 150, 150];
+const DEFAULT_NEON = 'cyan';
+
 function setup() {
     createCanvas(windowWidth, windowHeight, WEBGL);
     smooth();
     camera(0, -400, 350, 0, 0, 0, 0, 1, 0);
-    
+    angleMode(DEGREES);
+    noStroke();
+
+    generateBuildings();
+
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('mouseup', onMouseUp);
-    
-    angleMode(DEGREES);
-    noStroke();
-    
-    generateBuildings();
-    setupUI();
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'e' || e.key === 'E') {
+            window.open('editor.html', '_blank', 'width=1200,height=900,resizable=yes');
+        }
+    });
 
-    setTimeout(() => {
-        setupCameraAndML5();
-    }, 500);
+    // --- Cross-Window Communication ---
+    const channel = new BroadcastChannel('cyberpunk_sync');
+    channel.onmessage = (ev) => {
+        const msg = ev.data;
+        console.log('[Main] Received command:', msg.type);
+
+        switch (msg.type) {
+            case 'applyToRandom':
+                if (people.length === 0) return;
+                // Get only people who have NOT been specialized yet
+                const availableIndices = [];
+                for (let i = 0; i < people.length; i++) {
+                    if (!specializedFlags[i]) availableIndices.push(i);
+                }
+                if (availableIndices.length === 0) {
+                    console.log('[Main] No remaining unspecialized people.');
+                    return;
+                }
+                const randIdx = random(availableIndices);
+                const randTarget = people[randIdx];
+                randTarget.updateStyle(color(msg.color), msg.neon, msg.speed);
+                specializedFlags[randIdx] = true;
+                totalSpecialApplied++;
+                updateStatsAndUI();
+                console.log('[Main] Applied to random person (index ' + randIdx + ')');
+                break;
+
+            case 'applyToAll':
+                for (let i = 0; i < people.length; i++) {
+                    people[i].updateStyle(color(msg.color), msg.neon, msg.speed);
+                    specializedFlags[i] = true;
+                }
+                totalSpecialApplied += people.length;
+                updateStatsAndUI();
+                console.log('[Main] Applied to all people');
+                break;
+
+            case 'updateAngles':
+                if (window.previewPerson) {
+                    window.previewPerson.leftArmML5Angle = msg.leftArmAngle;
+                    window.previewPerson.rightArmML5Angle = msg.rightArmAngle;
+                }
+                break;
+            default:
+                break;
+        }
+    };
+    window.syncChannel = channel;
 }
 
 function draw() {
     background(30);
-    
     ambientLight(100, 100, 60);
     directionalLight(120, 100, 180, 0.5, 1, -0.5);
     pointLight(80, 60, 160, 0, 100, 0);
-    
     rotateX(20);
-    //rotateY(camRotationY);
-    
+
     drawGroundGrid();
-    //drawAxes();
     drawBuildings();
-    
+
     if (modelsReady && people.length === 0) {
         initPeople();
-        previewPerson = new People3D(-250, 450, color(150,150,150), 'cyan', 1.2);
-        console.log('👥 Crowd initialized with default gray color');
+        window.previewPerson = new People3D(-1000, -1000, color(150,150,150), 'cyan', 1.2);
+        console.log('[Main] Crowd initialized');
     }
 
-    if (aiControlActive && ml5Ready && poses.length > 0 && previewPerson) {
-        let keypoints = poses[0].keypoints;
-        previewPerson.updateFromPose(keypoints);
-    } else if (previewPerson && !aiControlActive) {
-        previewPerson.leftArmML5Angle = undefined;
-        previewPerson.rightArmML5Angle = undefined;
-        previewPerson.leftLegML5Angle = undefined;
-        previewPerson.rightLegML5Angle = undefined;
-    }
-    
-    for (let p of people) {
-        p.update();
-    }
+    for (let person of people) person.update();
     for (let iter = 0; iter < 2; iter++) {
-        for (let p of people) {
-            p.avoid(people);
+        for (let i = 0; i < people.length; i++) {
+            people[i].avoid(people);
         }
     }
-    for (let p of people) {
-        p.show();
-    }
-}
+    for (let person of people) person.show();
 
-// ----------------------------------------------
-//  UI 面板逻辑（实时同步预览人物）
-// ----------------------------------------------
-function setupUI() {
-    const colorPicker = select('#bodyColorPicker');
-    const neonSelect = select('#neonTypeSelect');
-    const speedSlider = select('#speedSlider');
-    const randomBtn = select('#applyToRandomBtn');
-    const allBtn = select('#applyToAllBtn');
-    
-    // 实时更新预览人物
-    colorPicker.input(() => {
-        if (previewPerson) previewPerson.bodyColor = color(colorPicker.value());
-    });
-    neonSelect.input(() => {
-        if (previewPerson) previewPerson.neonType = neonSelect.value();
-    });
-    speedSlider.input(() => {
-        if (previewPerson) {
-            let newSpeed = parseFloat(speedSlider.value());
-            previewPerson.speed = newSpeed;
-            previewPerson.dz = 0.2 * newSpeed;
-        }
-    });
-    
-    randomBtn.mousePressed(() => {
-        if (people.length === 0) return;
-        const target = random(people);
-        const newColor = color(colorPicker.value());
-        const newNeon = neonSelect.value();
-        const newSpeed = parseFloat(speedSlider.value());
-        target.updateStyle(newColor, newNeon, newSpeed);
-        console.log(`✨ Customized a random person (new speed: ${newSpeed})`);
-    });
-    
-    allBtn.mousePressed(() => {
-        if (people.length === 0) return;
-        const newColor = color(colorPicker.value());
-        const newNeon = neonSelect.value();
-        const newSpeed = parseFloat(speedSlider.value());
-        for (let p of people) {
-            p.updateStyle(newColor, newNeon, newSpeed);
-        }
-        console.log(`🌐 All people updated! Speed: ${newSpeed}`);
-    });
-
-    const assignAIBtn = select('#assignAIBtn');
-    if (assignAIBtn) {
-        assignAIBtn.mousePressed(() => {
-            aiControlActive = !aiControlActive;
-            assignAIBtn.html(aiControlActive ? '🔴 Stop AI Control' : '🎯 Enable AI Control');
-        });
+    if (window.previewPerson) {
+        push();
+        translate(window.previewPerson.x, groundY + 30, window.previewPerson.z);
+        fill(255, 0, 0, 80);
+        noStroke();
+        ellipse(0, 0, 10, 10);
+        pop();
     }
 }
 
-// Helper functions (unchanged)
 function drawGroundGrid() {
     push();
     stroke(70, 90, 150);
@@ -133,26 +128,59 @@ function drawGroundGrid() {
     pop();
 }
 
-function drawAxes() {
-    push();
-    strokeWeight(2);
-    stroke(255, 0, 0);
-    line(-200, 20, 0, 200, 20, 0);
-    stroke(0, 255, 0);
-    line(0, -200, 0, 0, 200, 0);
-    stroke(0, 0, 255);
-    line(0, 20, -200, 0, 20, 200);
-    pop();
-}
-
 function initPeople() {
-    const defaultColor = color(150, 150, 150);
-    const defaultNeon = 'cyan';
+    const defaultColor = color(DEFAULT_COLOR_RGB[0], DEFAULT_COLOR_RGB[1], DEFAULT_COLOR_RGB[2]);
+    specializedFlags = [];
     for (let i = 0; i < peopleCount; i++) {
         let x = random(-worldWidth / 2 + 5, worldWidth / 2 - 5);
         let z = random(-worldDepth / 2 + 5, worldDepth / 2 - 5);
         let speedVal = random(0.8, 2.2);
-        people.push(new People3D(x, z, defaultColor, defaultNeon, speedVal));
+        people.push(new People3D(x, z, defaultColor, DEFAULT_NEON, speedVal));
+        specializedFlags.push(false);
+    }
+    updateStatsAndUI();
+}
+
+// Reset all people to default (called by auto-reset)
+function resetAllToDefault() {
+    const defaultColor = color(DEFAULT_COLOR_RGB[0], DEFAULT_COLOR_RGB[1], DEFAULT_COLOR_RGB[2]);
+    for (let i = 0; i < people.length; i++) {
+        people[i].updateStyle(defaultColor, DEFAULT_NEON, people[i].speed);
+        specializedFlags[i] = false;
+    }
+    resetCount++;
+    updateStatsAndUI();
+    console.log('[Main] Reset all people to default');
+}
+
+// Compute current number of visually special (non-default) people
+function computeCurrentSpecialCount() {
+    const defaultColor = color(DEFAULT_COLOR_RGB[0], DEFAULT_COLOR_RGB[1], DEFAULT_COLOR_RGB[2]);
+    let count = 0;
+    for (let person of people) {
+        if (!person.isDefault(defaultColor, DEFAULT_NEON)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+// Update statistics and check auto-reset condition
+function updateStatsAndUI() {
+    const currentSpecial = computeCurrentSpecialCount();
+    // Auto-reset if everyone is special
+    if (currentSpecial === peopleCount && peopleCount > 0) {
+        console.log('[Main] All people are special! Auto-resetting.');
+        resetAllToDefault();
+        // After reset, recompute currentSpecial (will be 0)
+    }
+    // Update HTML display (the final values after possible reset)
+    document.getElementById('totalSpecial').innerText = totalSpecialApplied;
+    document.getElementById('currentSpecial').innerText = computeCurrentSpecialCount();
+    document.getElementById('resetCount').innerText = resetCount;
+    // totalPeople is static, set once
+    if (document.getElementById('totalPeople').innerText === '60') {
+        // already set
     }
 }
 
@@ -168,48 +196,11 @@ function onMouseMove(e) {
         lastMouseY = e.clientY;
     }
 }
-
 function onMouseDown(e) {
     isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
 }
-
 function onMouseUp(e) {
     isDragging = false;
-}
-
-async function setupCameraAndML5() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video = createCapture(VIDEO);
-        video.size(320, 240);
-        
-        setTimeout(() => {
-            if (typeof setupVideoDebug === 'function') {
-                setupVideoDebug();
-            }
-        }, 1000);
-        
-        bodyPose = ml5.bodyPose('MoveNet', { model: 'movenet_singlepose_lightning' }, () => {
-            console.log('✅ BodyPose model loaded');
-            ml5Ready = true;
-            detectPose();
-        });
-    } catch (err) {
-        console.error('Camera error:', err);
-    }
-}
-
-function detectPose() {
-    if (!ml5Ready || !video) return;
-    bodyPose.detect(video, gotPoses);
-}
-
-function gotPoses(results) {
-    poses = results;
-    if (typeof updateDebugPoses === 'function') {
-        updateDebugPoses(poses);
-    }
-    detectPose();
 }

@@ -32,19 +32,18 @@ let people = [];
 let peopleCount = 60;
 let worldWidth = 400;
 let worldDepth = 800;
-let groundY = 20;                // raised overall
+let groundY = 20;
 
 // Model loading flags
 let bodyLoaded = false;
 let armLoaded = false;
-let modelsReady = false;         // both models loaded
+let modelsReady = false;
 
 // Body model bounds
 let modelMinX, modelMaxX, modelMinY, modelMaxY, modelMinZ, modelMaxZ;
-
 let buildings = [];
 
-// ======== CITY GENERATION PARAMETERS (your original values) ========
+// City generation parameters
 const GRID_SIZE_X = 8;
 const GRID_SIZE_Z = 48;
 const BUILDING_SPACING = 21;
@@ -59,9 +58,11 @@ const MAX_BUILDING_H = 170;
 const MIN_BUILDING_D = 10;
 const MAX_BUILDING_D = 18;
 
-let video;
-let bodyPose;
-let poses = [];
-let controlledPersonIndex = -1;
-let ml5Ready = false;
-let aiControlActive = false;      // 新增
+// AI control flag (used by People3D to determine if using ML5 angles)
+let aiControlActive = false;
+
+// Communication channel (initialized in each window)
+let syncChannel;
+
+// AI-controlled person in main scene (will be created in sketch.js)
+let previewPerson;

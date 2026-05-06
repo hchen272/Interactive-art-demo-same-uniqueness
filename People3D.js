@@ -8,7 +8,6 @@ class People3D {
         this.fi = random(100);
         this.r = 10;
         
-        // 新增：自定义外观属性
         this.bodyColor = baseColor || color(150, 150, 150);
         this.neonType = baseNeon;   // 'cyan', 'purple', 'blue'
         this.customSpeed = this.speed;
@@ -19,7 +18,6 @@ class People3D {
         this.rightLegML5Angle = undefined;
     }
     
-    // 动态更新外观
     updateStyle(newColor, newNeonType, newSpeed = null) {
         if (newColor) this.bodyColor = newColor;
         if (newNeonType) this.neonType = newNeonType;
@@ -27,6 +25,14 @@ class People3D {
             this.speed = newSpeed;
             this.dz = 0.2 * this.speed;
         }
+    }
+
+    isDefault(defaultColor, defaultNeon) {
+
+        let isDefaultColor = (this.bodyColor.levels[0] === defaultColor.levels[0] &&
+                            this.bodyColor.levels[1] === defaultColor.levels[1] &&
+                            this.bodyColor.levels[2] === defaultColor.levels[2]);
+        return isDefaultColor && this.neonType === defaultNeon;
     }
     
     update() {
@@ -37,7 +43,6 @@ class People3D {
         }
     }
     
-    // 根据霓虹类型获取灯带颜色
     getNeonColor() {
         switch(this.neonType) {
             case 'cyan': return color(0, 200, 200);
@@ -57,7 +62,6 @@ class People3D {
             let armHeight = window.armModelMaxY - window.armModelMinY;
             translate(0, -armHeight / 2, 0);
         }
-        // 使用身体颜色 + 霓虹色作为手臂高光
         ambientMaterial(this.bodyColor);
         specularMaterial(this.getNeonColor());
         model(armlegmodel);
@@ -89,13 +93,11 @@ class People3D {
         if (!bodyandheadmodel) return;
         let leftArmAngle, rightArmAngle, leftLegAngle, rightLegAngle;
         if (this.leftArmML5Angle !== undefined && this.rightArmML5Angle !== undefined) {
-            // 使用 ml5 驱动的角度
             leftArmAngle = this.leftArmML5Angle;
             rightArmAngle = this.rightArmML5Angle;
             leftLegAngle = this.leftLegML5Angle || 0;
             rightLegAngle = this.rightLegML5Angle || 0;
         } else {
-            // 原有的走路动画
             let walkCycle = frameCount * this.speed * 1.5;
             leftArmAngle = sin(walkCycle + this.fi) * armSwingAmplitude;
             rightArmAngle = sin(walkCycle + this.fi + 180) * armSwingAmplitude;
@@ -112,7 +114,6 @@ class People3D {
         rotateY(this.angle || 0);
         scale(modelScaleFactor);
         
-        // Body with custom color
         push();
         translate(-modelCenterX, -modelCenterY * 0.35, -modelCenterZ);
         rotateY(angle);
@@ -155,12 +156,10 @@ class People3D {
         }
     }
 
-    // 根据 ml5 姿态关键点更新关节角度
     updateFromPose(keypoints) {
         if (!keypoints) return;
         const get = (name) => keypoints.find(kp => kp.name === name);
         
-        // 计算手臂角度（基于肩-肘-腕）
         const calcArmAngle = (shoulder, elbow, wrist) => {
             if (!shoulder || !elbow || !wrist) return null;
             let vSE = { x: elbow.x - shoulder.x, y: elbow.y - shoulder.y };
@@ -171,12 +170,11 @@ class People3D {
             if (magSE === 0 || magEW === 0) return null;
             let rad = Math.acos(Math.min(1, Math.max(-1, dot / (magSE * magEW))));
             let deg = rad * 180 / Math.PI;
-            // 根据手腕相对于肩部的水平位置确定正负（前摆为正，后摆为负）
+  
             let sign = (wrist.x - shoulder.x) > 0 ? 1 : -1;
             return sign * deg;
         };
         
-        // 左臂
         let ls = get('left_shoulder'), le = get('left_elbow'), lw = get('left_wrist');
         let leftDeg = calcArmAngle(ls, le, lw);
         if (leftDeg !== null) {
@@ -184,19 +182,11 @@ class People3D {
             this.leftArmML5Angle = mapped;
         }
         
-        // 右臂
         let rs = get('right_shoulder'), re = get('right_elbow'), rw = get('right_wrist');
         let rightDeg = calcArmAngle(rs, re, rw);
         if (rightDeg !== null) {
             let mapped = map(rightDeg, -90, 90, -armSwingAmplitude, armSwingAmplitude);
             this.rightArmML5Angle = mapped;
         }
-        
-        // 腿部暂时禁用，保持走路动画
-        // this.leftLegML5Angle = undefined;
-        // this.rightLegML5Angle = undefined;
-        
-        // 调试输出
-        // if (frameCount % 30 === 0) console.log(`Left: ${leftDeg}, Right: ${rightDeg}`);
     }
 }

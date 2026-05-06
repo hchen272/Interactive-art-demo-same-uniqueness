@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyberpunk Character Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a1a;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+        }
+        #controls {
+            background: rgba(10,10,20,0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid #0ff;
+            border-left: none;
+            color: #0ff;
+            width: 520px;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 32px 28px;  /* 增加内边距 */
+            box-shadow: 5px 0 20px rgba(0,255,255,0.2);
+            z-index: 30;
+            font-size: 20px;
+        }
+        #controls h3 {
+            text-align: center;
+            margin-bottom: 28px;  /* 增加标题下边距 */
+            letter-spacing: 2px;
+            font-size: 28px;
+        }
+        .row {
+            margin-bottom: 35px;  /* 增加行间距 */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        label {
+            font-size: 25px;
+            width: 140px;
+        }
+        input, select, button {
+            background: #1a1a2e;
+            color: #0ff;
+            border: 1px solid #0ff;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: monospace;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0ff;
+            color: #000;
+        }
+        input[type="color"] {
+            width: 70px;
+            height: 38px;
+        }
+        input[type="range"] {
+            width: 190px;
+            margin-right: 10px;
+        }
+        .value-display {
+            width: 50px;
+            text-align: right;
+            font-size: 18px;
+        }
+        hr {
+            border-color: rgba(0,255,255,0.3);
+            margin: 28px 0;  /* 增加分隔线上下边距 */
+        }
+        .subgroup {
+            margin-left: 30px;
+            padding-left: 15px;
+            border-left: 1px solid rgba(0,255,255,0.3);
+        }
+        /* 增加分组标题的间距 */
+        .group-title {
+            margin-bottom: 12px;
+            margin-top: 8px;
+        }
+        #previewContainer {
+            flex: 1;
+            height: 100vh;
+            background: #111;
+            border-left: 2px solid cyan;
+            box-shadow: -5px 0 15px rgba(0,255,255,0.2);
+            overflow: hidden;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="globals.js"></script>
+    <script src="editor.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <h3>⚡ CHARACTER EDITOR ⚡</h3>
+        <div class="row">
+            <label>👤 Body Color:</label>
+            <input type="color" id="bodyColorPicker" value="#5588ff">
+        </div>
+        <div class="row">
+            <label>💠 Neon Trim:</label>
+            <select id="neonTypeSelect">
+                <option value="cyan">Cyan</option>
+                <option value="purple">Purple</option>
+                <option value="blue">Electric Blue</option>
+            </select>
+        </div>
+        <div class="row">
+            <label>⚡ Speed:</label>
+            <input type="range" id="speedSlider" min="0.5" max="2.5" step="0.05" value="1.2">
+            <span id="speedValue" class="value-display">1.20</span>
+        </div>
+        <hr>
+        <div class="group-title" style="margin-bottom:12px;">💪 Arms</div>
+        <div class="subgroup">
+            <div class="row">
+                <label>Length:</label>
+                <input type="range" id="armLengthSlider" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="armLengthValue" class="value-display">1.00</span>
+            </div>
+            <div class="row">
+                <label>Thickness:</label>
+                <input type="range" id="armThicknessSlider" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="armThicknessValue" class="value-display">1.00</span>
+            </div>
+        </div>
+        <div class="group-title" style="margin: 20px 0 12px 0;">🦵 Legs</div>
+        <div class="subgroup">
+            <div class="row">
+                <label>Length:</label>
+                <input type="range" id="legLengthSlider" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="legLengthValue" class="value-display">1.00</span>
+            </div>
+            <div class="row">
+                <label>Thickness:</label>
+                <input type="range" id="legThicknessSlider" min="0.5" max="1.5" step="0.01" value="1.0">
+                <span id="legThicknessValue" class="value-display">1.00</span>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <button id="applyToRandomBtn" style="width:100%;">❗JUMP INTO CANVAS❗</button>
+        </div>
+    </div>
+    <div id="previewContainer"></div>
+
+    <script>
+        const armLen = document.getElementById('armLengthSlider');
+        const armLenVal = document.getElementById('armLengthValue');
+        const armThick = document.getElementById('armThicknessSlider');
+        const armThickVal = document.getElementById('armThicknessValue');
+        const legLen = document.getElementById('legLengthSlider');
+        const legLenVal = document.getElementById('legLengthValue');
+        const legThick = document.getElementById('legThicknessSlider');
+        const legThickVal = document.getElementById('legThicknessValue');
+        const spd = document.getElementById('speedSlider');
+        const spdVal = document.getElementById('speedValue');
+        
+        armLen.addEventListener('input', () => armLenVal.innerText = parseFloat(armLen.value).toFixed(2));
+        armThick.addEventListener('input', () => armThickVal.innerText = parseFloat(armThick.value).toFixed(2));
+        legLen.addEventListener('input', () => legLenVal.innerText = parseFloat(legLen.value).toFixed(2));
+        legThick.addEventListener('input', () => legThickVal.innerText = parseFloat(legThick.value).toFixed(2));
+        spd.addEventListener('input', () => spdVal.innerText = parseFloat(spd.value).toFixed(2));
+    </script>
+</body>
+</html>
