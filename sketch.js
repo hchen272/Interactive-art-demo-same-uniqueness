@@ -48,11 +48,84 @@ function setup() {
                 }
                 const randIdx = random(availableIndices);
                 const randTarget = people[randIdx];
-                randTarget.updateStyle(color(msg.color), msg.neon, msg.speed);
+                
+                // --- Remove arrows from ALL people ---
+                for (let i = 0; i < people.length; i++) {
+                    const p = people[i];
+                    if (p.accessories) {
+                        const oldLen = p.accessories.length;
+                        p.accessories = p.accessories.filter(acc => acc.name !== 'arrow');
+                        if (p.accessories.length !== oldLen) {
+                            console.log(`[Main] Removed arrow from person ${i}`);
+                        }
+                    }
+                    // Clear any pending timers to avoid stale removals
+                    if (p._arrowTimer) {
+                        clearTimeout(p._arrowTimer);
+                        p._arrowTimer = null;
+                    }
+                }
+                
+                // Parse accessories from message
+                let accessoriesData = null;
+                if (msg.accessories && msg.accessories.length > 0) {
+                    accessoriesData = msg.accessories.map(acc => ({
+                        name: acc.name,
+                        pos: createVector(acc.pos.x, acc.pos.y, acc.pos.z),
+                        scale: acc.scale,
+                        rot: acc.rot ? createVector(acc.rot.x, acc.rot.y, acc.rot.z) : null,
+                        color: acc.color || '#ffffff',
+                        specularColor: acc.specularColor || '#ffffff'   // <-- 新增
+                    }));
+                } else {
+                    accessoriesData = [];
+                }
+                
+                // Add arrow to the new target only
+                const arrowAcc = {
+                    name: 'arrow',
+                    pos: createVector(0, 0.8, 0),
+                    scale: 0.25,
+                    rot: createVector(0, 0, 0),
+                    color: '#ff0000',
+                    specularColor: '#ff0000'   // optional, if your People3D supports it
+                };
+                accessoriesData.push(arrowAcc);
+
+                // Extract limb parameters (with defaults if missing)
+                const armLen = msg.armLength !== undefined ? msg.armLength : 1.0;
+                const armThick = msg.armThickness !== undefined ? msg.armThickness : 1.0;
+                const legLen = msg.legLength !== undefined ? msg.legLength : 1.0;
+                const legThick = msg.legThickness !== undefined ? msg.legThickness : 1.0;
+                
+                // Update style with new accessories (includes arrow)
+                randTarget.updateStyle(
+                    color(msg.color),
+                    msg.neon,
+                    msg.speed,
+                    accessoriesData,
+                    armLen,
+                    armThick,
+                    legLen,
+                    legThick
+                );
+                
+                // Set a timer to remove the arrow from this specific person after 3 seconds
+                randTarget._arrowTimer = setTimeout(() => {
+                    if (randTarget && randTarget.accessories) {
+                        const before = randTarget.accessories.length;
+                        randTarget.accessories = randTarget.accessories.filter(acc => acc.name !== 'arrow');
+                        if (randTarget.accessories.length !== before) {
+                            console.log(`[Main] Arrow auto-removed from person ${randIdx} after 3s`);
+                        }
+                        randTarget._arrowTimer = null;
+                    }
+                }, 3000);
+                
                 specializedFlags[randIdx] = true;
                 totalSpecialApplied++;
                 updateStatsAndUI();
-                console.log('[Main] Applied to random person (index ' + randIdx + ')');
+                console.log(`[Main] Applied to random person (index ${randIdx}) with arrow (other arrows cleared)`);
                 break;
 
             case 'applyToAll':
@@ -94,6 +167,17 @@ function draw() {
         console.log('[Main] Crowd initialized');
     }
 
+    for (let person of people) {
+        if (person.accessories) {
+            person.accessories = person.accessories.filter(acc => {
+                if (acc.name === 'arrow' && acc.expireTime && millis() > acc.expireTime) {
+                    return false;
+                }
+                return true;
+            });
+        }
+    }
+
     for (let person of people) person.update();
     for (let iter = 0; iter < 2; iter++) {
         for (let i = 0; i < people.length; i++) {
@@ -110,6 +194,18 @@ function draw() {
         ellipse(0, 0, 10, 10);
         pop();
     }
+
+    if (modelsReady && wallModel) {
+        push();
+        translate(-5, groundY, -510);
+        rotateZ(180)
+        scale(modelScaleFactor);
+        ambientMaterial(35, 40, 55);
+        specularMaterial(10, 30, 30);
+        model(wallModel);
+        pop();
+    }
+
 }
 
 function drawGroundGrid() {
@@ -135,7 +231,7 @@ function initPeople() {
         let x = random(-worldWidth / 2 + 5, worldWidth / 2 - 5);
         let z = random(-worldDepth / 2 + 5, worldDepth / 2 - 5);
         let speedVal = random(0.8, 2.2);
-        people.push(new People3D(x, z, defaultColor, DEFAULT_NEON, speedVal));
+        people.push(new People3D(x, z, defaultColor, DEFAULT_NEON, speedVal, null, 1.0, 1.0, 1.0, 1.0));
         specializedFlags.push(false);
     }
     updateStatsAndUI();
@@ -145,7 +241,16 @@ function initPeople() {
 function resetAllToDefault() {
     const defaultColor = color(DEFAULT_COLOR_RGB[0], DEFAULT_COLOR_RGB[1], DEFAULT_COLOR_RGB[2]);
     for (let i = 0; i < people.length; i++) {
-        people[i].updateStyle(defaultColor, DEFAULT_NEON, people[i].speed);
+        people[i].updateStyle(
+            defaultColor,           // body color
+            DEFAULT_NEON,           // neon type
+            people[i].speed,        // keep original speed? or reset to a default? Usually keep speed or set to 1.2
+            [],                   // accessories = null (clear all)
+            1.0,                    // armLength
+            1.0,                    // armThickness
+            1.0,                    // legLength
+            1.0                     // legThickness
+        );
         specializedFlags[i] = false;
     }
     resetCount++;

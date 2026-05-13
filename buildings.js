@@ -63,6 +63,7 @@ function generateBuildings() {
         }
     }
     console.log(`🏙️ Generated ${buildings.length} buildings, ${buildings.filter(b => b.decoration).length} decorated`);
+
 }
 
 // Generate decoration data: light strips and windows, mostly on left/right sides (X direction)

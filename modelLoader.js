@@ -33,13 +33,57 @@ function preload() {
         },
         (err) => console.error('arm/leg load error', err)
     );
+
+    wallModel = loadModel('model/wall.obj', false,
+    () => {
+            console.log('wall model loaded');
+            wallLoaded = true;
+            if (wallModel) {
+                wallModel.computeNormals();
+            }
+            checkModelsReady();
+        },
+    (err) => console.error('wall model load error', err)
+    );
+
+    bowModel = loadModel('model/bow.obj', () => console.log('bow loaded'));
+    tieModel = loadModel('model/tie.obj', () => console.log('tie loaded'));
+    glasses01Model = loadModel('model/glasses01.obj', () => console.log('glasses01 loaded'));
+    glasses02Model = loadModel('model/glasses02.obj', () => console.log('glasses02 loaded'));
+    hat01Model = loadModel('model/hat01.obj', () => console.log('hat01 loaded'));
+    hat02Model = loadModel('model/hat02.obj', () => console.log('hat02 loaded'));
+    hat03Model = loadModel('model/hat03.obj', () => console.log('hat03 loaded'));
+    arrowModel = loadModel('model/arrow.obj', () => console.log('arrow loaded'));
+    
 }
 
 function checkModelsReady() {
-    if (bodyLoaded && armLoaded) {
+    if (bodyLoaded && armLoaded && wallLoaded &&
+        bowModel && tieModel && glasses01Model && glasses02Model &&
+        hat01Model && hat02Model && hat03Model && arrowModel) {
         modelsReady = true;
-        console.log('All models loaded, waiting for setup to initialize crowd');
+        if (!accessoriesSetupDone) {
+            setupAccessoryModels();
+            accessoriesSetupDone = true;
+        }
+        console.log('All models ready including accessories');
+    } else {
+        setTimeout(checkModelsReady, 100);
     }
+}
+
+function setupAccessoryModels() {
+    window.accessoryModels = {
+        'bow': bowModel,
+        'tie': tieModel,
+        'glasses01': glasses01Model,
+        'glasses02': glasses02Model,
+        'hat01': hat01Model,
+        'hat02': hat02Model,
+        'hat03': hat03Model,
+        'arrow': arrowModel
+    };
+    console.log('Accessory models mapped to window');
 }
 
 // Compute body model bounding box

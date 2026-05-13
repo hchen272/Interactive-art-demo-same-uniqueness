@@ -5,6 +5,8 @@ let modelCenterX, modelCenterY, modelCenterZ;
 let modelScaleFactor;
 let armScaleFactor = 1.0;
 let legScaleFactor = 1.0;
+let wallModel;
+let wallLoaded = false;
 
 // Joint positions (in body model local coordinates)
 let leftShoulderPos, rightShoulderPos;
@@ -66,3 +68,7 @@ let syncChannel;
 
 // AI-controlled person in main scene (will be created in sketch.js)
 let previewPerson;
+
+// ========== Add global variables for accessory models ==========
+let bowModel, tieModel, glasses01Model, glasses02Model, hat01Model, hat02Model, hat03Model, arrowModel;
+let accessoriesSetupDone = false;

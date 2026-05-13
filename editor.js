@@ -1,6 +1,4 @@
-// editor.js - with dynamic shoulder/hip offset based on limb length
-// Removed "Apply to All" functionality, only "Apply to Random" remains.
-
+// editor.js - with multi-select accessories, individual colors, and Y-rotation slider for hats
 (function() {
     document.addEventListener('DOMContentLoaded', () => {
         console.log('[Editor] DOM loaded, initializing UI...');
@@ -9,7 +7,6 @@
         const neonSelect = document.getElementById('neonTypeSelect');
         const speedSlider = document.getElementById('speedSlider');
         const randomBtn = document.getElementById('applyToRandomBtn');
-        // No allBtn
         const armLengthSlider = document.getElementById('armLengthSlider');
         const armThicknessSlider = document.getElementById('armThicknessSlider');
         const legLengthSlider = document.getElementById('legLengthSlider');
@@ -35,13 +32,32 @@
         const channel = new BroadcastChannel('cyberpunk_sync');
 
         function sendCommand(type) {
+            let accessoriesData = null;
+            if (window.editorPreviewPerson && window.editorPreviewPerson.accessories) {
+                const enabled = window.editorPreviewPerson.accessories.filter(acc => acc.enabled);
+                if (enabled.length > 0) {
+                    accessoriesData = enabled.map(acc => ({
+                        name: acc.name,
+                        pos: { x: acc.pos.x, y: acc.pos.y, z: acc.pos.z },
+                        scale: acc.scale,
+                        rot: acc.rot ? { x: acc.rot.x, y: acc.rot.y, z: acc.rot.z } : null,
+                        color: acc.color || '#ffffff',
+                        specularColor: acc.specularColor || '#ffffff'   // <-- 新增
+                    }));
+                }
+            }
             channel.postMessage({
                 type: type,
                 color: currentStyle.color,
                 neon: currentStyle.neon,
-                speed: currentStyle.speed
+                speed: currentStyle.speed,
+                accessories: accessoriesData,
+                armLength: armLength,
+                armThickness: armThickness,
+                legLength: legLength,
+                legThickness: legThickness
             });
-            console.log(`[Editor] Sent ${type}`);
+            console.log(`[Editor] Sent ${type} with ${accessoriesData?.length || 0} accessories`);
         }
 
         function updateCurrentStyle() {
@@ -74,11 +90,12 @@
         legLengthSlider.addEventListener('input', updateLimbParams);
         legThicknessSlider.addEventListener('input', updateLimbParams);
         randomBtn.addEventListener('click', () => sendCommand('applyToRandom'));
-        // No allBtn listener
 
+        // p5 sketch
         const sketch = (p) => {
             let bodyModel = null;
             let armModel = null;
+            let bowModel, tieModel, glasses01Model, glasses02Model, hat01Model, hat02Model, hat03Model;
             let modelsReady = false;
 
             let modelCenterX, modelCenterY, modelCenterZ, modelScaleFactor;
@@ -93,6 +110,13 @@
                 console.log('[Editor-p5] Preloading models...');
                 bodyModel = p.loadModel('model/bodyandhead.obj', () => console.log('[Editor-p5] Body model loaded'));
                 armModel = p.loadModel('model/armandleg.obj', () => console.log('[Editor-p5] Arm/leg model loaded'));
+                bowModel = p.loadModel('model/bow.obj', () => console.log('[Editor-p5] Bow loaded'));
+                tieModel = p.loadModel('model/tie.obj', () => console.log('[Editor-p5] Tie loaded'));
+                glasses01Model = p.loadModel('model/glasses01.obj', () => console.log('[Editor-p5] Glasses01 loaded'));
+                glasses02Model = p.loadModel('model/glasses02.obj', () => console.log('[Editor-p5] Glasses02 loaded'));
+                hat01Model = p.loadModel('model/hat01.obj', () => console.log('[Editor-p5] hat01 loaded'));
+                hat02Model = p.loadModel('model/hat02.obj', () => console.log('[Editor-p5] hat02 loaded'));
+                hat03Model = p.loadModel('model/hat03.obj', () => console.log('[Editor-p5] hat03 loaded'));
             };
 
             p.setup = () => {
@@ -105,17 +129,31 @@
                 console.log('[Editor-p5] Canvas created');
 
                 const checkModels = () => {
-                    if (bodyModel && armModel) {
+                    if (bodyModel && armModel && 
+                        bowModel && tieModel && glasses01Model && glasses02Model &&
+                        hat01Model && hat02Model && hat03Model) {
                         modelsReady = true;
                         bodyModel.computeNormals();
                         armModel.computeNormals();
                         computeModelParams();
                         computeBaseLimbScales();
 
+                        const accessoriesList = [
+                            { model: bowModel, name: 'bow', pos: p.createVector(-0.05, 0.52, 0), scale: 0.05, rot: p.createVector(0, 0, 20), enabled: false, color: '#ff0000' },
+                            { model: tieModel, name: 'tie', pos: p.createVector(0, 0.15, 0.1), scale: 0.1, rot: p.createVector(0, 90, 270), enabled: false, color: '#00ff00' },
+                            { model: glasses01Model, name: 'glasses01', pos: p.createVector(0, 0.4, 0.15), scale: 0.03, rot: p.createVector(0, 90, 90), enabled: false, color: '#ffff00' },
+                            { model: glasses02Model, name: 'glasses02', pos: p.createVector(0, 0.4, 0.15), scale: 0.03, rot: p.createVector(0, 90, 90), enabled: false, color: '#00ffff' },
+                            { model: hat01Model, name: 'hat01', pos: p.createVector(0, 0.47, 0), scale: 0.15, rot: p.createVector(0, 0, 0), enabled: false, color: '#ff00ff' },
+                            { model: hat02Model, name: 'hat02', pos: p.createVector(0, 0.47, 0), scale: 0.12, rot: p.createVector(0, 90, 0), enabled: false, color: '#ff8800' },
+                            { model: hat03Model, name: 'hat03', pos: p.createVector(0, 0.50, 0), scale: 0.09, rot: p.createVector(0, 0, 0), enabled: false, color: '#88ff00' }
+                        ];
+
                         previewPerson = {
                             bodyColor: p.color(85, 136, 255),
                             neonType: 'cyan',
                             speed: 1.2,
+                            accessories: accessoriesList,
+                            selectedAccessoryName: 'bow',
                             updateStyle: function(colHex, neon, spd) {
                                 this.bodyColor = p.color(colHex);
                                 this.neonType = neon;
@@ -123,6 +161,73 @@
                             }
                         };
                         window.editorPreviewPerson = previewPerson;
+
+                        const container = document.getElementById('accessoryCheckboxes');
+                        if (container) {
+                            container.innerHTML = '';
+                            previewPerson.accessories.forEach((acc) => {
+                                const div = document.createElement('div');
+                                div.className = 'accessory-item';
+                                const cb = document.createElement('input');
+                                cb.type = 'checkbox';
+                                cb.id = `acc_${acc.name}`;
+                                cb.checked = acc.enabled;
+                                cb.addEventListener('change', (e) => { acc.enabled = e.target.checked; });
+                                const label = document.createElement('label');
+                                label.htmlFor = `acc_${acc.name}`;
+                                let displayName = acc.name.charAt(0).toUpperCase() + acc.name.slice(1);
+                                if (acc.name.startsWith('glasses')) displayName = 'Glasses ' + acc.name.slice(-2);
+                                if (acc.name.startsWith('hat')) displayName = 'Hat ' + acc.name.slice(-2);
+                                label.innerText = displayName;
+                                const colorPicker = document.createElement('input');
+                                colorPicker.type = 'color';
+                                colorPicker.value = acc.color || '#ffffff';
+                                colorPicker.addEventListener('input', (e) => { acc.color = e.target.value; });
+                                const specularPicker = document.createElement('input');
+                                specularPicker.type = 'color';
+                                specularPicker.value = acc.specularColor || '#ffffff';   // fallback to white
+                                specularPicker.style.marginLeft = '4px';
+                                specularPicker.title = 'Specular highlight color';
+                                specularPicker.addEventListener('input', (e) => { acc.specularColor = e.target.value; });
+
+                                div.appendChild(cb);
+                                div.appendChild(label);
+                                div.appendChild(colorPicker);
+                                div.appendChild(specularPicker);
+                                // 对于 hat01 和 hat02 添加 Y 轴滑块
+                                if (acc.name === 'hat01' || acc.name === 'hat02') {
+                                    const sliderWrapper = document.createElement('div');
+                                    sliderWrapper.style.display = 'inline-flex';
+                                    sliderWrapper.style.alignItems = 'center';
+                                    sliderWrapper.style.gap = '6px';
+                                    sliderWrapper.style.marginLeft = '8px';
+                                    const sliderLabel = document.createElement('span');
+                                    sliderLabel.innerText = 'Y°';
+                                    sliderLabel.style.fontSize = '12px';
+                                    const slider = document.createElement('input');
+                                    slider.type = 'range';
+                                    slider.min = 0;
+                                    slider.max = 360;
+                                    slider.step = 1;
+                                    slider.value = acc.rot ? acc.rot.y : 0;
+                                    slider.addEventListener('input', (e) => {
+                                        if (!acc.rot) acc.rot = p.createVector(0, 0, 0);
+                                        acc.rot.y = parseInt(e.target.value);
+                                        angleSpan.innerText = acc.rot.y;
+                                    });
+                                    const angleSpan = document.createElement('span');
+                                    angleSpan.innerText = slider.value;
+                                    angleSpan.style.fontSize = '12px';
+                                    angleSpan.style.width = '30px';
+                                    sliderWrapper.appendChild(sliderLabel);
+                                    sliderWrapper.appendChild(slider);
+                                    sliderWrapper.appendChild(angleSpan);
+                                    div.appendChild(sliderWrapper);
+                                }
+                                container.appendChild(div);
+                            });
+                        }
+
                         console.log('[Editor-p5] Models ready');
                     } else {
                         setTimeout(checkModels, 100);
@@ -172,13 +277,10 @@
                     armMaxY = Math.max(armMaxY, v.y);
                 }
                 const armOriginalLength = armMaxY - armMinY;
-
                 const bodyHeight = (bodyModel.vertices.reduce((max, v) => Math.max(max, v.y), -Infinity) -
                                     bodyModel.vertices.reduce((min, v) => Math.min(min, v.y), Infinity));
-
                 const desiredArmLength = bodyHeight * 0.50;
                 const desiredLegLength = bodyHeight * 0.52;
-
                 baseArmScale = desiredArmLength / (armOriginalLength * modelScaleFactor);
                 baseLegScale = desiredLegLength / (armOriginalLength * modelScaleFactor);
                 console.log(`[Editor-p5] Base arm scale=${baseArmScale}, leg scale=${baseLegScale}`);
@@ -218,7 +320,7 @@
             function drawPreviewPerson(p, person, leftArmAngle, rightArmAngle, leftLegAngle, rightLegAngle) {
                 if (!bodyModel || !armModel) return;
                 const neonRGB = getNeonRGB(person.neonType);
-                const extraScale = 1.9;  // overall character scale (unchanged)
+                const extraScale = 1.9;
 
                 p.push();
                 p.rotateX(180);
@@ -233,43 +335,62 @@
                 p.model(bodyModel);
                 p.pop();
 
-                // Arms with dynamic shoulder offset
+                // Arms
                 if (leftShoulder) {
                     drawLimb(p, leftShoulder, person.bodyColor, neonRGB, leftArmAngle, true, false);
                     drawLimb(p, rightShoulder, person.bodyColor, neonRGB, rightArmAngle, true, true);
                 }
-                // Legs with dynamic hip offset
+                // Legs
                 if (leftHip) {
                     drawLimb(p, leftHip, person.bodyColor, neonRGB, leftLegAngle, false, false);
                     drawLimb(p, rightHip, person.bodyColor, neonRGB, rightLegAngle, false, true);
                 }
+
+                // Draw enabled accessories
+                if (person.accessories) {
+                    for (let acc of person.accessories) {
+                        if (!acc.enabled || !acc.model) continue;
+                        p.push();
+                        let totalScale = modelScaleFactor * extraScale;
+                        let xOff = acc.pos.x * totalScale;
+                        let yOff = acc.pos.y * totalScale;
+                        let zOff = acc.pos.z * totalScale;
+                        p.translate(xOff, yOff, zOff);
+                        if (acc.rot) {
+                            p.rotateX(acc.rot.x);
+                            p.rotateY(acc.rot.y);
+                            p.rotateZ(acc.rot.z);
+                        }
+                        p.scale(acc.scale * totalScale);
+                        let accColor = acc.color ? p.color(acc.color) : person.bodyColor;
+                        p.ambientMaterial(accColor);
+                        p.specularMaterial(neonRGB[0], neonRGB[1], neonRGB[2]);
+                        p.model(acc.model);
+                        p.pop();
+                    }
+                }
+
                 p.pop();
             }
 
             function drawLimb(p, jointPos, bodyColor, neonRGB, angle, isArm, isRight) {
                 p.push();
-
                 let yOffset = isArm ? 1.2 * (jointPos.y - modelCenterY) : (jointPos.y - modelCenterY);
-                
                 let lengthMult = isArm ? armLength : legLength;
-                const shiftFactor = 1;  // pixels per unit of length increase
-                let extraYShift = (lengthMult - 1.0) * shiftFactor;
+                let extraYShift = (lengthMult - 1.0) * 1;
                 yOffset += extraYShift;
-
                 p.translate(jointPos.x - modelCenterX, yOffset, jointPos.z - modelCenterZ);
                 p.rotateX(angle);
                 if (!isArm) {
                     if (isRight) p.rotateZ(3);
                     else p.rotateZ(-3);
                 }
-
                 let thicknessMult = isArm ? armThickness : legThickness;
                 const baseScale = isArm ? baseArmScale : baseLegScale;
                 const sx = thicknessMult * baseScale * modelScaleFactor;
                 const sy = lengthMult * baseScale * modelScaleFactor;
                 const sz = thicknessMult * baseScale * modelScaleFactor;
                 p.scale(sx, sy, sz);
-
                 const limbHeight = armModel.vertices.reduce((max, v) => Math.max(max, v.y), -Infinity) -
                                    armModel.vertices.reduce((min, v) => Math.min(min, v.y), Infinity);
                 p.translate(0, -limbHeight / 2, 0);

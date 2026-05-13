@@ -1,8 +1,7 @@
 class People3D {
-    constructor(x, z, baseColor = null, baseNeon = 'cyan', baseSpeed = null) {
+    constructor(x, z, baseColor = null, baseNeon = 'cyan', baseSpeed = null, accessories = null, armLen = 1.0, armThick = 1.0, legLen = 1.0, legThick = 1.0) {
         this.x = x;
         this.z = z;
-        // 支持自定义速度，否则随机
         this.speed = baseSpeed !== null ? baseSpeed : random(1.2, 2.2);
         this.dz = 0.2 * this.speed;
         this.fi = random(100);
@@ -16,19 +15,66 @@ class People3D {
         this.rightArmML5Angle = undefined;
         this.leftLegML5Angle = undefined;
         this.rightLegML5Angle = undefined;
+        this.accessories = accessories || [];
+
+        this.armLength = armLen;
+        this.armThickness = armThick;
+        this.legLength = legLen;
+        this.legThickness = legThick;
+
     }
     
-    updateStyle(newColor, newNeonType, newSpeed = null) {
+    updateStyle(newColor, newNeonType, newSpeed = null, newAccessories = null,
+            newArmLength = null, newArmThickness = null, newLegLength = null, newLegThickness = null) {
         if (newColor) this.bodyColor = newColor;
         if (newNeonType) this.neonType = newNeonType;
         if (newSpeed !== null) {
             this.speed = newSpeed;
             this.dz = 0.2 * this.speed;
         }
+        if (newAccessories) this.accessories = newAccessories;
+        if (newArmLength !== null) this.armLength = newArmLength;
+        if (newArmThickness !== null) this.armThickness = newArmThickness;
+        if (newLegLength !== null) this.legLength = newLegLength;
+        if (newLegThickness !== null) this.legThickness = newLegThickness;
+    }
+
+    drawAccessories() {
+        if (!this.accessories || this.accessories.length === 0) return;
+        if (!window.accessoryModels) return;
+        const extraScale = 1.9;
+        for (let acc of this.accessories) {
+            let accModel = window.accessoryModels[acc.name];
+            if (!accModel) continue;
+            push();
+            let totalScale = modelScaleFactor * extraScale;
+            translate(acc.pos.x * totalScale, acc.pos.y * totalScale, acc.pos.z * totalScale);
+            if (acc.rot) {
+                rotateX(acc.rot.x);
+                rotateY(acc.rot.y);
+                rotateZ(acc.rot.z);
+            }
+            scale(acc.scale * totalScale);
+            
+            // Diffuse color (ambient)
+            let accessoryColor = acc.color ? color(acc.color) : this.bodyColor;
+            ambientMaterial(accessoryColor);
+            
+            // Specular color (highlight) - use accessory's specularColor or fallback to neon
+            let specColor;
+            if (acc.specularColor) {
+                specColor = color(acc.specularColor);
+            } else {
+                specColor = this.getNeonColor();
+            }
+            specularMaterial(specColor);
+            
+            window.model(accModel);
+            pop();
+        }
     }
 
     isDefault(defaultColor, defaultNeon) {
-
         let isDefaultColor = (this.bodyColor.levels[0] === defaultColor.levels[0] &&
                             this.bodyColor.levels[1] === defaultColor.levels[1] &&
                             this.bodyColor.levels[2] === defaultColor.levels[2]);
@@ -37,7 +83,7 @@ class People3D {
     
     update() {
         this.z += this.dz;
-        if (this.z > worldDepth / 2) {
+        if (this.z > 510) {
             this.z = -worldDepth / 2;
             this.x = random(-worldWidth / 2 + 5, worldWidth / 2 - 5);
         }
@@ -57,7 +103,11 @@ class People3D {
         push();
         translate(xOffset, 1.2 * yOffset, zOffset);
         rotateX(swingAngle);
-        scale(modelScaleFactor * armScaleFactor);
+        // Use instance arm length & thickness
+        let sx = this.armThickness * armScaleFactor * modelScaleFactor;
+        let sy = this.armLength * armScaleFactor * modelScaleFactor;
+        let sz = this.armThickness * armScaleFactor * modelScaleFactor;
+        scale(sx, sy, sz);
         if (armlegmodel.vertices && window.armModelMinY !== undefined) {
             let armHeight = window.armModelMaxY - window.armModelMinY;
             translate(0, -armHeight / 2, 0);
@@ -75,7 +125,10 @@ class People3D {
         rotateX(swingAngle);
         if (isRight) rotateZ(3);
         else rotateZ(-3);
-        scale(modelScaleFactor * legScaleFactor);
+        let sx = this.legThickness * legScaleFactor * modelScaleFactor;
+        let sy = this.legLength * legScaleFactor * modelScaleFactor;
+        let sz = this.legThickness * legScaleFactor * modelScaleFactor;
+        scale(sx, sy, sz);
         if (armlegmodel.vertices && window.armModelMinY !== undefined) {
             let legHeight = window.armModelMaxY - window.armModelMinY;
             translate(0, -legHeight / 2, 0);
@@ -85,7 +138,7 @@ class People3D {
         model(armlegmodel);
         pop();
     }
-    
+
     show() {
         var f = frameCount * this.speed * 1.5;
         var angle = -10 * sin(f + this.fi);
@@ -110,7 +163,8 @@ class People3D {
         }
         push();
         rotateX(180);
-        translate(this.x, -8, this.z);
+        let legYOffset = (this.legLength - 1.0) * 2.5;
+        translate(this.x, -8 + legYOffset, this.z);
         rotateY(this.angle || 0);
         scale(modelScaleFactor);
         
@@ -133,6 +187,7 @@ class People3D {
             this.drawLeg(rightHipPos.x - modelCenterX, rightHipPos.y - modelCenterY,
                          rightHipPos.z - modelCenterZ, rightLegAngle, true);
         }
+        this.drawAccessories();
         pop();
     }
     
