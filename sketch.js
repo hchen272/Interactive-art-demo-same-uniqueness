@@ -215,17 +215,6 @@ function draw() {
         pop();
     }
 
-    if (modelsReady && wallModel) {
-        push();
-        translate(-5, groundY, -510);
-        rotateZ(180)
-        scale(modelScaleFactor);
-        ambientMaterial(35, 40, 55);
-        specularMaterial(10, 30, 30);
-        model(wallModel);
-        pop();
-    }
-
 }
 
 function drawGroundGrid() {
