@@ -90,6 +90,25 @@
         legLengthSlider.addEventListener('input', updateLimbParams);
         legThicknessSlider.addEventListener('input', updateLimbParams);
         randomBtn.addEventListener('click', () => sendCommand('applyToRandom'));
+        // Clear all decos button - only affects editor preview
+        const clearAllDecosBtn = document.getElementById('clearAllDecosBtn');
+        if (clearAllDecosBtn) {
+            clearAllDecosBtn.addEventListener('click', () => {
+                // Clear local preview decorations
+                if (window.editorPreviewPerson && window.editorPreviewPerson.accessories) {
+                    // Disable all accessories
+                    for (let acc of window.editorPreviewPerson.accessories) {
+                        acc.enabled = false;
+                    }
+                    // Uncheck all checkboxes in the UI
+                    const checkboxes = document.querySelectorAll('#accessoryCheckboxes input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    console.log('[Editor] All decorations cleared in editor preview');
+                }
+            });
+        }
 
         // p5 sketch
         const sketch = (p) => {
@@ -117,6 +136,7 @@
                 hat01Model = p.loadModel('model/hat01.obj', () => console.log('[Editor-p5] hat01 loaded'));
                 hat02Model = p.loadModel('model/hat02.obj', () => console.log('[Editor-p5] hat02 loaded'));
                 hat03Model = p.loadModel('model/hat03.obj', () => console.log('[Editor-p5] hat03 loaded'));
+                backpackModel = p.loadModel('model/backpack.obj', () => console.log('[Editor-p5] backpack loaded'));
             };
 
             p.setup = () => {
@@ -145,7 +165,8 @@
                             { model: glasses02Model, name: 'glasses02', pos: p.createVector(0, 0.4, 0.15), scale: 0.03, rot: p.createVector(0, 90, 90), enabled: false, color: '#00ffff' },
                             { model: hat01Model, name: 'hat01', pos: p.createVector(0, 0.47, 0), scale: 0.15, rot: p.createVector(0, 0, 0), enabled: false, color: '#ff00ff' },
                             { model: hat02Model, name: 'hat02', pos: p.createVector(0, 0.47, 0), scale: 0.12, rot: p.createVector(0, 90, 0), enabled: false, color: '#ff8800' },
-                            { model: hat03Model, name: 'hat03', pos: p.createVector(0, 0.50, 0), scale: 0.09, rot: p.createVector(0, 0, 0), enabled: false, color: '#88ff00' }
+                            { model: hat03Model, name: 'hat03', pos: p.createVector(0, 0.50, 0), scale: 0.09, rot: p.createVector(0, 0, 0), enabled: false, color: '#88ff00' },
+                            { model: backpackModel, name: 'backpack', pos: p.createVector(0, -0.1, -0.15), scale: 0.12, rot: p.createVector(0, 90, 0), enabled: false, color: '#906116' }
                         ];
 
                         previewPerson = {

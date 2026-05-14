@@ -70,5 +70,9 @@ let syncChannel;
 let previewPerson;
 
 // ========== Add global variables for accessory models ==========
-let bowModel, tieModel, glasses01Model, glasses02Model, hat01Model, hat02Model, hat03Model, arrowModel;
+let bowModel, tieModel, glasses01Model, glasses02Model, hat01Model, hat02Model, hat03Model, arrowModel, backpackModel;
 let accessoriesSetupDone = false;
+
+// Music
+let bgm;
+let musicStarted = false;

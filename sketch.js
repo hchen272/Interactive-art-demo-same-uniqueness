@@ -149,6 +149,26 @@ function setup() {
         }
     };
     window.syncChannel = channel;
+    
+    if (bgm && !musicStarted) {
+        bgm.setVolume(0.5);        // set volume (0.0 to 1.0)
+        bgm.loop();                // start looping
+        musicStarted = true;
+        
+        // If autoplay is blocked, the music will not be heard.
+        // We add a one-time click/touch listener to start it on user interaction.
+        const startMusicOnUserInteraction = () => {
+            if (!bgm.isPlaying()) {
+                bgm.loop();
+                console.log('[Main] Music started after user interaction');
+            }
+            // Remove the listeners after first interaction
+            window.removeEventListener('click', startMusicOnUserInteraction);
+            window.removeEventListener('touchstart', startMusicOnUserInteraction);
+        };
+        window.addEventListener('click', startMusicOnUserInteraction);
+        window.addEventListener('touchstart', startMusicOnUserInteraction);
+    }
 }
 
 function draw() {

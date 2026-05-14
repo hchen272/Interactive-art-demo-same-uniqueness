@@ -1,5 +1,7 @@
 // ========== Model Loading ==========
 function preload() {
+    // Music load
+    bgm = loadSound('music/Same uniquess (made by Hongliang Chen).mp3');
     // Body model
     bodyandheadmodel = loadModel('model/bodyandhead.obj', false,
         () => {
@@ -54,13 +56,13 @@ function preload() {
     hat02Model = loadModel('model/hat02.obj', () => console.log('hat02 loaded'));
     hat03Model = loadModel('model/hat03.obj', () => console.log('hat03 loaded'));
     arrowModel = loadModel('model/arrow.obj', () => console.log('arrow loaded'));
-    
+    backpackModel = loadModel('model/backpack.obj', () => console.log('[Editor-p5] backpack loaded'));
 }
 
 function checkModelsReady() {
     if (bodyLoaded && armLoaded && wallLoaded &&
         bowModel && tieModel && glasses01Model && glasses02Model &&
-        hat01Model && hat02Model && hat03Model && arrowModel) {
+        hat01Model && hat02Model && hat03Model && arrowModel && backpackModel) {
         modelsReady = true;
         if (!accessoriesSetupDone) {
             setupAccessoryModels();
@@ -81,7 +83,8 @@ function setupAccessoryModels() {
         'hat01': hat01Model,
         'hat02': hat02Model,
         'hat03': hat03Model,
-        'arrow': arrowModel
+        'arrow': arrowModel,
+        'backpack': backpackModel
     };
     console.log('Accessory models mapped to window');
 }
