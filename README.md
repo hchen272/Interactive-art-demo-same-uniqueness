@@ -1,7 +1,10 @@
 # Same Uniqueness – Cyberpunk Crowd Scene
 
 An interactive 3D cyberpunk city scene where a crowd of stylized characters walks down a neon-lit street.  
+
 You can customize a character in a separate editor, **jump it into the scene**, and watch its accessories **spread** to nearby people like a fashionable epidemic.
+
+Video demo is available at: [Same Uniqueness Video Demo](https://www.youtube.com/watch?v=-GYE56HNAl4)
 
 ---
 
