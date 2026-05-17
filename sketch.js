@@ -410,13 +410,10 @@ function spreadDecorations() {
     for (let source of sources) {
         for (let target of people) {
             if (source === target) continue;
-            // 只感染那些完全没有装饰品的人
-            if (!target.hasAnyAccessories()) {
                 let d = dist(source.x, source.z, target.x, target.z);
                 if (d < spreadRadius && random() < spreadProbability) {
                     target.copyAccessoriesFrom(source);
                 }
-            }
         }
     }
 }
