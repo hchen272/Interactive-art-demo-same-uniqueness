@@ -244,4 +244,26 @@ class People3D {
             this.rightArmML5Angle = mapped;
         }
     }
+
+    // Add difusion decorations
+    copyAccessoriesFrom(other) {
+        this.accessories = [];
+        for (let acc of other.accessories) {
+            if (acc.name === 'arrow') continue;
+            let newAcc = {
+                name: acc.name,
+                pos: createVector(acc.pos.x, acc.pos.y, acc.pos.z),
+                scale: acc.scale,
+                rot: acc.rot ? createVector(acc.rot.x, acc.rot.y, acc.rot.z) : null,
+                color: acc.color,
+                specularColor: acc.specularColor
+            };
+            this.accessories.push(newAcc);
+        }
+    }
+
+    hasAnyAccessories() {
+        if (!this.accessories) return false;
+        return this.accessories.some(acc => acc.name !== 'arrow');
+    }
 }

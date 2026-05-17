@@ -54,7 +54,7 @@ function generateBuildings() {
                 buildings.push({
                     x, z, w, d, h,
                     color: buildingColor,
-                    breathSpeed: random(0.3, 0.8),
+                    breathSpeed: random(0.3, 0.8)*10,
                     breathPhase: random(TWO_PI),
                     decoration: decorationData
                 });

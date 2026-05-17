@@ -199,6 +199,7 @@ function draw() {
     }
 
     for (let person of people) person.update();
+    spreadDecorations();
     for (let iter = 0; iter < 2; iter++) {
         for (let i = 0; i < people.length; i++) {
             people[i].avoid(people);
@@ -317,4 +318,105 @@ function onMouseDown(e) {
 }
 function onMouseUp(e) {
     isDragging = false;
+}
+
+// ========== Keyboard Randomization ==========
+function keyPressed() {
+    if (key === 'r' || key === 'R') {
+        randomizeFiftyPeople();
+    }
+}
+
+function randomizeFiftyPeople() {
+    if (!people || people.length === 0) return;
+    
+    // Determine how many to randomize (up to 50)
+    const count = min(50, people.length);
+    // Pick random unique indices
+    const indices = Array.from({length: people.length}, (_, i) => i);
+    shuffle(indices, true);
+    const selectedIndices = indices.slice(0, count);
+    
+    // Define possible neon types
+    const neonTypes = ['cyan', 'purple', 'blue'];
+    
+    // Define default accessory configurations (position, scale, rotation)
+    const defaultAccessories = {
+        bow:      { pos: createVector(-0.05, 0.52, 0), scale: 0.05, rot: createVector(0, 0, 20) },
+        tie:      { pos: createVector(0, 0.15, 0.1), scale: 0.1,  rot: createVector(0, 90, 270) },
+        glasses01:{ pos: createVector(0, 0.4, 0.15),  scale: 0.03, rot: createVector(0, 90, 90) },
+        glasses02:{ pos: createVector(0, 0.4, 0.15),  scale: 0.03, rot: createVector(0, 90, 90) },
+        hat01:    { pos: createVector(0, 0.47, 0),    scale: 0.15, rot: createVector(0, 0, 0) },
+        hat02:    { pos: createVector(0, 0.47, 0),    scale: 0.12, rot: createVector(0, 90, 0) },
+        hat03:    { pos: createVector(0, 0.50, 0),    scale: 0.09, rot: createVector(0, 0, 0) }
+    };
+    const accessoryNames = Object.keys(defaultAccessories);
+    
+    for (let idx of selectedIndices) {
+        const person = people[idx];
+        
+        // Random body color
+        const randColor = color(random(255), random(255), random(255));
+        
+        // Random neon type
+        const randNeon = random(neonTypes);
+        
+        // Random limb parameters (range 0.6 ~ 1.5)
+        const randArmLen = random(0.6, 1.5);
+        const randArmThick = random(0.6, 1.5);
+        const randLegLen = random(0.6, 1.5);
+        const randLegThick = random(0.6, 1.5);
+        
+        // Random accessories: decide which to add (each with 0.6 probability)
+        const newAccessories = [];
+        for (let name of accessoryNames) {
+            if (random() < 0.6) {   // 60% chance to add each accessory
+                const def = defaultAccessories[name];
+                // Random color for each accessory
+                const randAccColor = color(random(255), random(255), random(255));
+                newAccessories.push({
+                    name: name,
+                    pos: def.pos.copy(),
+                    scale: def.scale,
+                    rot: def.rot ? def.rot.copy() : createVector(0,0,0),
+                    color: randAccColor.toString('#rrggbb'),
+                    specularColor: '#ffffff'   // optional highlight
+                });
+            }
+        }
+        
+        // Apply all random properties
+        person.updateStyle(
+            randColor,
+            randNeon,
+            person.speed,           // keep original speed (or randomize if desired)
+            newAccessories,
+            randArmLen,
+            randArmThick,
+            randLegLen,
+            randLegThick
+        );
+    }
+    
+    console.log(`[Main] Randomized ${selectedIndices.length} people (R key)`);
+}
+
+function spreadDecorations() {
+    if (!spreadEnabled) return;
+    
+    let sources = people.filter(p => p.hasAnyAccessories());
+    if (sources.length === 0) return;
+    
+    for (let source of sources) {
+        for (let target of people) {
+            if (source === target) continue;
+            // 只感染那些完全没有装饰品的人
+            if (!target.hasAnyAccessories()) {
+                let d = dist(source.x, source.z, target.x, target.z);
+                if (d < spreadRadius && random() < spreadProbability) {
+                    target.copyAccessoriesFrom(source);
+                }
+            }
+        }
+    }
 }

@@ -76,3 +76,8 @@ let accessoriesSetupDone = false;
 // Music
 let bgm;
 let musicStarted = false;
+
+// decorations defussion params
+let spreadEnabled = true;
+let spreadRadius = 55;
+let spreadProbability = 0.1;
